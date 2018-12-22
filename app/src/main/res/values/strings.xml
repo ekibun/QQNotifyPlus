@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">QQ</string>
+    <string name="service_notify">QQ通知服务</string>
+    <string name="service_access">QQ通知隐藏服务</string>
+    <string name="acc_desc">用于在QQ打开时隐藏QQ消息</string>
+</resources>
