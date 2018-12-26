@@ -144,14 +144,14 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setWhen(time)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
-        if(!isQzoneTag(tag)){
-            builder.setGroup(tag.name)
-            builder.setGroupSummary(true)
-            notificationManager.notify(tag.name, tag.ordinal, builder.build())
-            builder.setSubText("${notifies.size}条新消息")
-            builder.setGroupSummary(false)
-        }
+                .setGroup(tag.name)
         notificationManager.notify(key, tag.ordinal, builder.build())
+        if(!isQzoneTag(tag)){
+            builder.setGroupSummary(true)
+            builder.setSubText("${count}条新消息")
+            notificationManager.notify(tag.name, tag.ordinal, builder.build())
+        }
+
 
 
         if(Build.VERSION.SDK_INT >= 23)
