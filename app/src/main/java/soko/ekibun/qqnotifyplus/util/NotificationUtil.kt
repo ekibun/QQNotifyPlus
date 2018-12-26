@@ -16,7 +16,7 @@ object NotificationUtil{
     fun builder(context: Context, channelId: String, title: String): NotificationCompat.Builder{
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >=26) {
-            val channel = NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_LOW)
+            val channel = NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_HIGH)
             manager.createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(context, channelId)

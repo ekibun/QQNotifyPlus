@@ -15,15 +15,13 @@ class AccessibilityMonitorService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
                 if (event.packageName == null || event.className == null)
                     return
-                val tag =NotificationMonitorService.tags[ event.packageName.toString()]?.ordinal?:return
+                val tag =NotificationMonitorService.tags[ event.packageName.toString()]?:return
                 val className = event.className.toString()
                 Log.v("class", className)
-                if ("com.tencent.mobileqq.activity.SplashActivity" == event.className || "com.dataline.activities.LiteActivity" == event.className) {
-                    startService(Intent(this, NotificationMonitorService::class.java).putExtra("tag", tag))
-                } else if (className.startsWith("cooperation.qzone.")) {
-                    startService(Intent(this, NotificationMonitorService::class.java).putExtra("tag", NotificationMonitorService.Tag.QZONE.ordinal))
-                }
-
+                if ("com.tencent.mobileqq.activity.SplashActivity" == event.className || "com.dataline.activities.LiteActivity" == event.className)
+                    startService(Intent(this, NotificationMonitorService::class.java).putExtra("tag", tag.ordinal))
+                else if (className.startsWith("cooperation.qzone."))
+                    startService(Intent(this, NotificationMonitorService::class.java).putExtra("tag", (NotificationMonitorService.qzoneTag[tag]?:tag).ordinal))
             }
         }
     }

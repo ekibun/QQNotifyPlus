@@ -24,13 +24,22 @@ class NotificationMonitorService : NotificationListenerService() {
         QQ,
         TIM,
         QQ_LITE,
-        QZONE
+        QZONE_QQ,
+        QZONE_TIM,
+        QZONE_LITE
     }
     companion object {
         val tags = mapOf(
                 "com.tencent.mobileqq" to Tag.QQ,
                 "com.tencent.tim" to Tag.TIM,
                 "com.tencent.qqlite" to Tag.QQ_LITE)
+        val qzoneTag = mapOf(
+                Tag.QQ to Tag.QZONE_QQ,
+                Tag.TIM to Tag.QZONE_TIM,
+                Tag.QQ_LITE to Tag.QZONE_LITE)
+        fun isQzoneTag(tag: Tag): Boolean{
+            return qzoneTag.containsValue(tag)
+        }
     }
 
     private val notificationManager: NotificationManager by lazy{ getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
@@ -56,12 +65,12 @@ class NotificationMonitorService : NotificationListenerService() {
         val count = if (notifyTicker == notifyText) {
             val count = Regex("QQ空间动态\\(共(\\d+)条未读\\)$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:0
             if(count > 0 || "QQ空间动态" == title)
-                tag = Tag.QZONE
+                tag = qzoneTag[tag]?:tag
             Math.max(1, count)
         }else
             Regex("(\\d+)\\S{1,3}新消息\\)?$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:1
 
-        val notify = if(tag == Tag.QZONE)
+        val notify = if(isQzoneTag(tag))
             Notify("QQ空间动态",
                     notifyTicker)
         else
@@ -73,7 +82,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 Notify(it.getOrNull(1)?:"",
                         it.getOrNull(2)?:"")
             }?:return
-        val key = if(tag == Tag.QZONE) "qzone" else if(notify.group.isEmpty()) "u_" + notify.name else "g_" + notify.group
+        val key = if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "u_" + notify.name else "g_" + notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
         //删除旧消息
@@ -123,23 +132,23 @@ class NotificationMonitorService : NotificationListenerService() {
         val pendingIntent = PendingIntent.getService(this.applicationContext, tag.ordinal, notificationIntent, 0)
 
         val builder = NotificationUtil.builder(this,
-                if(tag == Tag.QZONE) "qzone" else if(notify.group.isEmpty()) "friend" else "group",
-                if(tag == Tag.QZONE) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息")
+                if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "friend" else "group",
+                if(isQzoneTag(tag)) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息")
                 .setLargeIcon(profile)
                 .setStyle(style)
-                .setColor(ResourcesCompat.getColor(resources, if(tag == Tag.QZONE) R.color.colorQzone else R.color.colorPrimary, theme))
-                .setSubText("${count}条${if(tag == Tag.QZONE)"未读" else "新消息"}")
+                .setColor(ResourcesCompat.getColor(resources, if(isQzoneTag(tag)) R.color.colorQzone else R.color.colorPrimary, theme))
+                .setSubText("${notifies.size}条${if(isQzoneTag(tag))"未读" else "新消息"}")
                 .setContentTitle(notify.group)
-                .setSmallIcon(if(tag == Tag.QZONE) R.drawable.ic_qzone else R.drawable.ic_qq)
+                .setSmallIcon(if(isQzoneTag(tag)) R.drawable.ic_qzone else R.drawable.ic_qq)
                 .setTicker(notifyTicker)
                 .setWhen(time)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
-        if(tag != Tag.QZONE){
+        if(!isQzoneTag(tag)){
             builder.setGroup(tag.name)
             builder.setGroupSummary(true)
             notificationManager.notify(tag.name, tag.ordinal, builder.build())
-            builder.setSubText("${notifies.size}条${if(tag == Tag.QZONE)"未读" else "新消息"}")
+            builder.setSubText("${notifies.size}条新消息")
             builder.setGroupSummary(false)
         }
         notificationManager.notify(key, tag.ordinal, builder.build())
@@ -150,7 +159,7 @@ class NotificationMonitorService : NotificationListenerService() {
         cancelNotification(sbn.key)
     }
 
-    val lastIntent: HashMap<Int, PendingIntent> = HashMap()
+    private val lastIntent: HashMap<Int, PendingIntent> = HashMap()
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
             if (intent.hasExtra("tag")) {
