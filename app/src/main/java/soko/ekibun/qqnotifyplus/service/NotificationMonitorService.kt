@@ -139,7 +139,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setColor(ResourcesCompat.getColor(resources, if(isQzoneTag(tag)) R.color.colorQzone else R.color.colorPrimary, theme))
                 .setSubText("${notifies.size}条${if(isQzoneTag(tag))"未读" else "新消息"}")
                 .setContentTitle(notify.group)
-                .setSmallIcon(if(isQzoneTag(tag)) R.drawable.ic_qzone else R.drawable.ic_qq)
+                .setSmallIcon(if(isQzoneTag(tag)) R.drawable.ic_qzone else if(tag == Tag.TIM) R.drawable.ic_tim else  R.drawable.ic_qq)
                 .setTicker(notifyTicker)
                 .setWhen(time)
                 .setAutoCancel(true)
