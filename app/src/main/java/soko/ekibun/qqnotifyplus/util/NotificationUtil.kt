@@ -7,6 +7,7 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.support.v4.app.NotificationCompat
@@ -17,6 +18,9 @@ object NotificationUtil{
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >=26) {
             val channel = NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_HIGH)
+            channel.enableLights(true)
+            channel.lightColor = Color.BLUE
+            channel.enableVibration(true)
             manager.createNotificationChannel(channel)
         }
         return NotificationCompat.Builder(context, channelId)
