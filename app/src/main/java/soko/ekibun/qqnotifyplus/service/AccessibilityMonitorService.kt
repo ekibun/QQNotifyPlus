@@ -5,8 +5,6 @@ import android.content.Intent
 import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
-
-
 class AccessibilityMonitorService : AccessibilityService() {
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {

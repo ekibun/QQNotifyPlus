@@ -1,5 +1,6 @@
 package soko.ekibun.qqnotifyplus.service
 
+import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationManager
 import android.content.Context
@@ -16,8 +17,14 @@ import soko.ekibun.qqnotifyplus.R
 import soko.ekibun.qqnotifyplus.util.FileUtils
 import soko.ekibun.qqnotifyplus.util.NotificationUtil
 import android.app.PendingIntent
+import android.content.ComponentName
 import android.content.Intent
+import android.preference.PreferenceManager
 import android.support.v4.content.res.ResourcesCompat
+import eu.chainfire.librootjava.RootIPCReceiver
+import soko.ekibun.qqnotifyplus.root.IIPC
+import soko.ekibun.qqnotifyplus.root.PendingIntentGetter
+import eu.chainfire.libsuperuser.Shell
 
 class NotificationMonitorService : NotificationListenerService() {
     enum class Tag{
@@ -29,6 +36,8 @@ class NotificationMonitorService : NotificationListenerService() {
         QZONE_LITE
     }
     companion object {
+        const val EXTRA_NOTIFICATION_MODIFIED = "QQNotificationModified"
+
         val tags = mapOf(
                 "com.tencent.mobileqq" to Tag.QQ,
                 "com.tencent.tim" to Tag.TIM,
@@ -42,11 +51,37 @@ class NotificationMonitorService : NotificationListenerService() {
         }
     }
 
+    override fun onCreate() {
+        super.onCreate()
+        ipcReceiver.setContext(this)
+    }
+
+    override fun onDestroy() {
+        ipcReceiver.release()
+        super.onDestroy()
+    }
+
+    private val ipcReceiver by lazy{
+        object: RootIPCReceiver<IIPC>(this, 0){
+            override fun onConnect(ipc: IIPC?) {
+                while(statusBarNotifications.isNotEmpty()){
+                    val sbn = statusBarNotifications.removeAt(0)
+                    modifyNotification(sbn, ipc)
+                }
+                disconnect()
+            }
+            override fun onDisconnect(ipc: IIPC?) {}
+        }
+    }
+
     private val notificationManager: NotificationManager by lazy{ getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager }
 
     private val msgList = HashMap<Tag, HashMap<String, Notifies>>()
     private val maxCount = 20
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
+    private var statusBarNotifications = ArrayList<StatusBarNotification>()
+    private val sp by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
+
+    fun modifyNotification(sbn: StatusBarNotification, ipc: IIPC?){
         var tag = NotificationMonitorService.tags[sbn.packageName]?:return
 
         val notification = sbn.notification?:return
@@ -70,10 +105,26 @@ class NotificationMonitorService : NotificationListenerService() {
         }else
             Regex("(\\d+)\\S{1,3}新消息\\)?$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:1
 
+        val intent = ipc?.getIntent(notification.contentIntent)
+        val uinname = intent?.extras?.getString("uinname")
+
+        if(!uinname.isNullOrEmpty()){
+            sp.edit().putString("uin_$uinname", intent?.toUri(0)?.toString()).apply()
+        }
+
         val notify = if(isQzoneTag(tag))
             Notify("QQ空间动态",
                     notifyTicker)
-        else
+        else if(!uinname.isNullOrEmpty()){
+            Regex("(.*?)\\(($uinname)\\):(.+)").find(notifyTicker)?.groupValues?.let{
+                Notify(it.getOrNull(1)?:"",
+                        it.getOrNull(3)?:"",
+                        it.getOrNull(2)?:"")
+            }?:Regex("($uinname): (.+)").find(notifyTicker)?.groupValues?.let{
+                Notify(it.getOrNull(1)?:"",
+                        it.getOrNull(2)?:"")
+            }?:return
+        } else
             Regex("(.*?)\\((.+?)\\):(.+)").find(notifyTicker)?.groupValues?.let{
                 Notify(it.getOrNull(1)?:"",
                         it.getOrNull(3)?:"",
@@ -82,7 +133,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 Notify(it.getOrNull(1)?:"",
                         it.getOrNull(2)?:"")
             }?:return
-        val key = if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "u_" + notify.name else "g_" + notify.group
+        val key = if(isQzoneTag(tag)) "qzone" else  "uin_" + if(notify.group.isEmpty()) notify.name else notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
         //删除旧消息
@@ -125,15 +176,18 @@ class NotificationMonitorService : NotificationListenerService() {
         notifies.forEach { style.addMessage(it) }
 
         Log.v("ord", tag.name + tag.ordinal)
-        lastIntent[tag.ordinal] = notification.contentIntent
-        val notificationIntent = Intent(this, NotificationMonitorService::class.java)
-        notificationIntent.putExtra("NotifyClick", true)
-        notificationIntent.putExtra("tag", tag.ordinal)
-        val pendingIntent = PendingIntent.getService(this.applicationContext, tag.ordinal, notificationIntent, 0)
+        //lastIntent[tag.ordinal] = notification.contentIntent
 
-        val builder = NotificationUtil.builder(this,
-                if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "friend" else "group",
-                if(isQzoneTag(tag)) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息")
+        val pendingIntent = (try{
+            Intent.parseUri(sp.getString(key, "")?:"",0)
+        }catch (e: Exception){ intent })?.let{
+            val uin = it.extras?.getString("uin", "")?.toIntOrNull()?:0
+            PendingIntent.getActivity(this.applicationContext, uin, it, PendingIntent.FLAG_UPDATE_CURRENT)
+        }?:notification.contentIntent
+
+        val channelId = if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "friend" else "group"
+        val channelName = if(isQzoneTag(tag)) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息"
+        val builder = NotificationUtil.builder(this, channelId, channelName)
                 .setLargeIcon(profile)
                 .setStyle(style)
                 .setColor(ResourcesCompat.getColor(resources, if(isQzoneTag(tag)) R.color.colorQzone else R.color.colorPrimary, theme))
@@ -145,39 +199,45 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .setGroup(tag.name)
-        notificationManager.notify(key, tag.ordinal, builder.build())
-        if(!isQzoneTag(tag)){
-            builder.setGroupSummary(true)
-            builder.setSubText("${count}条新消息")
-            notificationManager.notify(tag.name, tag.ordinal, builder.build())
-        }
-
-
+        val newNotification = builder.build()
+        newNotification.extras.putBoolean(EXTRA_NOTIFICATION_MODIFIED, true)
+        if(ipc == null)
+            notificationManager.notify(key, tag.ordinal, newNotification)
+        else
+            ipc.sendNotification(sbn.packageName, key, tag.ordinal, newNotification, channelId, channelName)
 
         if(Build.VERSION.SDK_INT >= 23)
             setNotificationsShown(arrayOf(sbn.key))
         cancelNotification(sbn.key)
     }
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if(sbn.notification.extras.containsKey(EXTRA_NOTIFICATION_MODIFIED)) return
 
-    private val lastIntent: HashMap<Int, PendingIntent> = HashMap()
+        statusBarNotifications.add(sbn) //cache
+
+        //Root
+        if(root) {
+            shell.addCommand(PendingIntentGetter.getLaunchScript(this, null, null), 0) { commandCode, exitCode, output ->
+                Log.v("su_intent", "$commandCode, $exitCode, $output")
+            }
+        }else modifyNotification(sbn, null)
+    }
+    var root = false
+    private val shell= Shell.Builder().useSU().open { commandCode, exitCode, output ->
+        root = exitCode == 0
+        Log.v("su", "$commandCode, $exitCode, $output")
+    }
+
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
             if (intent.hasExtra("tag")) {
                 val tag = intent.getIntExtra("tag", 0)
-                notificationManager.cancel(tag)
+                val pkg = tags.toList().firstOrNull { it.second.ordinal == tag }?.first?:""
                 val sbns = activeNotifications
                 if (sbns != null && sbns.isNotEmpty()) {
                     for (sbn in sbns) {
-                        if (packageName != sbn.packageName || sbn.id != tag)
-                            continue
-                        notificationManager.cancel(sbn.tag, sbn.id)
-                    }
-                }
-                if (intent.hasExtra("NotifyClick")) {
-                    try {
-                        lastIntent[tag]?.send()
-                    } catch (e: PendingIntent.CanceledException) {
-                        e.printStackTrace()
+                        if (pkg != sbn.packageName || sbn.id != tag) continue
+                        cancelNotification(sbn.key)
                     }
                 }
             }

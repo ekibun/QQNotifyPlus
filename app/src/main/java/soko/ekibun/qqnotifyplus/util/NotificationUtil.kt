@@ -15,6 +15,11 @@ import android.support.v4.app.NotificationCompat
 object NotificationUtil{
     //创建渠道并发布通知
     fun builder(context: Context, channelId: String, title: String): NotificationCompat.Builder{
+        buildChannel(context, channelId, title)
+        return NotificationCompat.Builder(context, channelId)
+    }
+
+    fun buildChannel(context: Context, channelId: String, title: String): NotificationManager{
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         if(Build.VERSION.SDK_INT >=26) {
             val channel = NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_HIGH)
@@ -23,7 +28,7 @@ object NotificationUtil{
             channel.enableVibration(true)
             manager.createNotificationChannel(channel)
         }
-        return NotificationCompat.Builder(context, channelId)
+        return manager
     }
 
     fun getLargeIcon(context: Context, notification: Notification): Bitmap?{
