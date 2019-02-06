@@ -178,12 +178,12 @@ class NotificationMonitorService : NotificationListenerService() {
         Log.v("ord", tag.name + tag.ordinal)
         //lastIntent[tag.ordinal] = notification.contentIntent
 
-        val pendingIntent = (try{
-            Intent.parseUri(sp.getString(key, "")?:"",0)
-        }catch (e: Exception){ intent })?.let{
-            val uin = it.extras?.getString("uin", "")?.toIntOrNull()?:0
+        val pendingIntent = try{
+            val it = Intent.parseUri(sp.getString(key, "")?:"",0)
+            val uin = it.extras?.getString("uin", "")?.toIntOrNull()?:throw Exception("no uin")
             PendingIntent.getActivity(this.applicationContext, uin, it, PendingIntent.FLAG_UPDATE_CURRENT)
-        }?:notification.contentIntent
+        }catch (e: Exception){
+            notification.contentIntent }
 
         val channelId = if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "friend" else "group"
         val channelName = if(isQzoneTag(tag)) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息"
