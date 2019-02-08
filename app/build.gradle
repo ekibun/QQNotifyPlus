@@ -12,7 +12,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "soko.ekibun.qqnotifyplus"
-        minSdkVersion 23
+        minSdkVersion 24
         targetSdkVersion 28
         versionCode 1
         versionName getAlphaVersionName()
@@ -34,5 +34,6 @@ dependencies {
     androidTestImplementation 'com.android.support.test.espresso:espresso-core:3.0.2'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
     implementation 'eu.chainfire:librootjava:1.2.0'
+    //noinspection GradleDynamicVersion
     implementation 'eu.chainfire:libsuperuser:1.0.0+'
 }
