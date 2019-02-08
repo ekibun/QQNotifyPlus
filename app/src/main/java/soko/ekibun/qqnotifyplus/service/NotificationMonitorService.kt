@@ -102,31 +102,20 @@ class NotificationMonitorService : NotificationListenerService() {
         val intent = ipc?.getIntent(notification.contentIntent)
         val uinname = intent?.extras?.getString("uinname")
 
-        if(!uinname.isNullOrEmpty()){
-            sp.edit().putString("uin_$uinname", intent?.toUri(0)?.toString()).apply()
-        }
+        if(!uinname.isNullOrEmpty())
+            sp.edit().putString("${tag.name}_$uinname", intent?.toUri(0)?.toString()).apply()
 
         val notify = if(isQzoneTag(tag))
             Notify("QQ空间动态",
                     notifyTicker)
-        else if(!uinname.isNullOrEmpty()){
-            Regex("(.*?)\\(($uinname)\\):(.+)").find(notifyTicker)?.groupValues?.let{
-                Notify(it.getOrNull(1)?:"",
-                        it.getOrNull(3)?:"",
-                        it.getOrNull(2)?:"")
-            }?:Regex("($uinname): (.+)").find(notifyTicker)?.groupValues?.let{
-                Notify(it.getOrNull(1)?:"",
-                        it.getOrNull(2)?:"")
-            }?:return
-        } else
-            Regex("(.*?)\\((.+?)\\):(.+)").find(notifyTicker)?.groupValues?.let{
-                Notify(it.getOrNull(1)?:"",
-                        it.getOrNull(3)?:"",
-                        it.getOrNull(2)?:"")
-            }?:Regex("([^:]+): (.+)").find(notifyTicker)?.groupValues?.let{
-                Notify(it.getOrNull(1)?:"",
-                        it.getOrNull(2)?:"")
-            }?:return
+        else Regex("(.*?)\\((${if(uinname.isNullOrEmpty()) ".+?" else uinname})\\):(.+)").find(notifyTicker)?.groupValues?.let{
+            Notify(it.getOrNull(1)?:"",
+                    it.getOrNull(3)?:"",
+                    it.getOrNull(2)?:"")
+        }?:Regex("(${if(uinname.isNullOrEmpty()) "[^:]+" else uinname}): (.+)").find(notifyTicker)?.groupValues?.let{
+            Notify(it.getOrNull(1)?:"",
+                    it.getOrNull(2)?:"")
+        }?:return
         val key = if(isQzoneTag(tag)) "qzone" else  "${tag.name}_" + if(notify.group.isEmpty()) notify.name else notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
