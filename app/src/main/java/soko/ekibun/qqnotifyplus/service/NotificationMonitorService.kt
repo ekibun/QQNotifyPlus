@@ -71,7 +71,6 @@ class NotificationMonitorService : NotificationListenerService() {
 
 
     private val msgList = HashMap<Tag, HashMap<String, Notifies>>()
-    private val maxCount = 20
     private var statusBarNotifications = ArrayList<StatusBarNotification>()
     private val sp by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
 
@@ -102,8 +101,8 @@ class NotificationMonitorService : NotificationListenerService() {
         val intent = ipc?.getIntent(notification.contentIntent)
         val uinname = intent?.extras?.getString("uinname")
 
-        if(!uinname.isNullOrEmpty())
-            sp.edit().putString("${tag.name}_$uinname", intent?.toUri(0)?.toString()).apply()
+        if(intent?.extras?.getString("uin", "")?.toIntOrNull() != null)
+            sp.edit().putString("${tag.name}_$uinname", intent.toUri(0)?.toString()).apply()
 
         val notify = if(isQzoneTag(tag))
             Notify("QQ空间动态",
@@ -150,7 +149,6 @@ class NotificationMonitorService : NotificationListenerService() {
 
         val time = System.currentTimeMillis()
         notifies.add(Message(notify.content, time, person))
-        while(notifies.size > maxCount) notifies.removeAt(0)
 
         val style = NotificationCompat.MessagingStyle(person)
         style.conversationTitle = notify.group
@@ -182,7 +180,6 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setGroup(tag.name)
         val newNotification = builder.build()
         newNotification.extras.putBoolean(EXTRA_NOTIFICATION_MODIFIED, true)
-        newNotification.extras.putParcelable("android.appInfo", notification.extras.getParcelable("android.appInfo"))
         if(ipc == null){
             val manager = NotificationUtil.getNotificationManager(this)
             NotificationUtil.registerChannel(manager, channelId, channelName, channelGroupTag.name, channelGroupTag.name)

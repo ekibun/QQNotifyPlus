@@ -3,6 +3,7 @@ package soko.ekibun.qqnotifyplus.root
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
 import android.os.Build
 import eu.chainfire.librootjava.RootIPC
@@ -11,6 +12,8 @@ import soko.ekibun.qqnotifyplus.BuildConfig
 import soko.ekibun.qqnotifyplus.util.NotificationUtil
 import java.util.*
 import android.content.pm.ApplicationInfo
+import android.support.annotation.Keep
+import android.util.Log
 
 object RootMain {
 
@@ -40,7 +43,8 @@ object RootMain {
                     val channel = if (Build.VERSION.SDK_INT >= 26)
                         listOf(NotificationUtil.createChannel(channelId, "$channelName+", null)) else ArrayList()
                     createNotificationChannelsForPackage(manager, pkg, appInfo.uid, channel)
-                    enqueueNotificationWithTag(manager, pkg, pkg, tag, id, notification, 0)
+                    injectNotificationManager(manager)
+                    manager.notify(tag, id, notification)
                 } catch (e: Exception) {
                     e.printStackTrace()
                 }
@@ -84,18 +88,21 @@ object RootMain {
         }
     }
 
-    @SuppressLint("PrivateApi")
-    fun enqueueNotificationWithTag(manager: NotificationManager, pkg: String, opPkg: String, tag: String, id: Int, notification: Notification, userId: Int){
-        try {
-            val method = NotificationManager::class.java.getMethod("getService")
-            val obj = method.invoke(manager)
-            val classINotificationManager = Class.forName("android.app.INotificationManager\$Stub\$Proxy")
-            if (Build.VERSION.SDK_INT >= 26) {
-                val enqueueNotificationWithTag = classINotificationManager.getDeclaredMethod("enqueueNotificationWithTag", String::class.java, String::class.java, String::class.java, Integer.TYPE, Notification::class.java, Integer.TYPE)
-                enqueueNotificationWithTag.invoke(obj, pkg, opPkg, tag, id, notification, userId)
-            }
+    class InjectableContext(base: Context): ContextWrapper(base){
+        @Keep fun getOpPackageName(): String{
+            Log.v("getOpPackageName", baseContext.packageName)
+            return baseContext.packageName
+        }
+    }
+
+    fun injectNotificationManager(manager: NotificationManager){
+        try{
+            val field = NotificationManager::class.java.getDeclaredField("mContext")
+            field.isAccessible = true
+            Log.v("mContext", field.get(manager).toString())
+            field.set(manager, InjectableContext(field.get(manager) as Context))
         } catch (e: Exception) {
-            throw IllegalStateException(e)
+            e.printStackTrace()
         }
     }
 }
