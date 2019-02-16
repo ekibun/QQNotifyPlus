@@ -180,6 +180,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setGroup(tag.name)
         val newNotification = builder.build()
         newNotification.extras.putBoolean(EXTRA_NOTIFICATION_MODIFIED, true)
+        NotificationUtil.sendToXiaoMi(newNotification, notifies.size)
         if(ipc == null){
             val manager = NotificationUtil.getNotificationManager(this)
             NotificationUtil.registerChannel(manager, channelId, channelName, channelGroupTag.name, channelGroupTag.name)

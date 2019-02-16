@@ -12,6 +12,9 @@ import android.graphics.Color
 import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import android.support.annotation.RequiresApi
+import android.content.Intent
+
+
 
 object NotificationUtil{
     
@@ -38,5 +41,21 @@ object NotificationUtil{
 
     fun getLargeIcon(context: Context, notification: Notification): Bitmap?{
         return (notification.getLargeIcon()?.loadDrawable(context) as? BitmapDrawable)?.bitmap
+    }
+
+    /**
+     * 向小米手机发送未读消息数广播
+     * @param count
+     */
+    fun sendToXiaoMi(notification: Notification, count: Int) {
+        try {
+            val field = notification.javaClass.getDeclaredField("extraNotification")
+            val extraNotification = field.get(notification)
+            val method = extraNotification.javaClass.getDeclaredMethod("setMessageCount", Int::class.javaPrimitiveType)
+            method.invoke(extraNotification, count)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+
     }
 }
