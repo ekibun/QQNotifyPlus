@@ -211,7 +211,7 @@ class NotificationMonitorService : NotificationListenerService() {
         if (intent != null) {
             if (intent.hasExtra("tag")) {
                 val tag = intent.getIntExtra("tag", 0)
-                val pkg = tags.toList().firstOrNull { it.second.ordinal == tag }?.first?:""
+                val pkg = tags.toList().firstOrNull { it.second.ordinal == tag || qzoneTag[it.second]?.ordinal == tag }?.first?:""
                 val sbns = activeNotifications
                 if (sbns != null && sbns.isNotEmpty()) {
                     for (sbn in sbns) {
