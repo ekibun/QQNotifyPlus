@@ -115,7 +115,7 @@ class NotificationMonitorService : NotificationListenerService() {
             Notify(it.getOrNull(1)?:"",
                     it.getOrNull(2)?:"")
         }?:return
-        val key = if(isQzoneTag(tag)) "qzone" else  "${tag.name}_" + if(notify.group.isEmpty()) notify.name else notify.group
+        val key = "${tag.name}_" + if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) notify.name else notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
         //删除旧消息
@@ -210,14 +210,12 @@ class NotificationMonitorService : NotificationListenerService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent != null) {
-            if (intent.hasExtra("tag")) {
-                val tag = intent.getIntExtra("tag", 0)
-                val pkg = tags.toList().firstOrNull { it.second.ordinal == tag || qzoneTag[it.second]?.ordinal == tag }?.first?:""
-                val sbns = activeNotifications
+            val sbns = activeNotifications
+            if(intent.hasExtra("key")){
+                val key = intent.getStringExtra("key")
                 if (sbns != null && sbns.isNotEmpty()) {
                     for (sbn in sbns) {
-                        if (pkg != sbn.packageName || sbn.id != tag) continue
-                        cancelNotification(sbn.key)
+                        if (sbn.tag == key) cancelNotification(sbn.key)
                     }
                 }
             }
