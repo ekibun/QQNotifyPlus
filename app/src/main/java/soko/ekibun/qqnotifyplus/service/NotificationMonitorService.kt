@@ -180,6 +180,7 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setGroup(tag.name)
         val newNotification = builder.build()
         newNotification.extras.putBoolean(EXTRA_NOTIFICATION_MODIFIED, true)
+        newNotification.extras.putParcelable("android.appInfo", notification.extras.getParcelable("android.appInfo"))
         NotificationUtil.sendToXiaoMi(newNotification, notifies.size)
         if(ipc == null){
             val manager = NotificationUtil.getNotificationManager(this)
