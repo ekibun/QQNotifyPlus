@@ -15,7 +15,7 @@ class AccessibilityMonitorService : AccessibilityService() {
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ->{
                 val tag = NotificationMonitorService.tags[currentPackage]?:return
                 if ("com.tencent.mobileqq.activity.SplashActivity" == currentActivity || "com.dataline.activities.LiteActivity" == currentActivity)
-                    enumNode(rootInActiveWindow, "root|"){subNode->
+                    enumNode(rootInActiveWindow?:return, "root|"){subNode->
                         if(subNode.contentDescription in listOf("群资料卡", "返回消息")) {
                             enumNode(subNode.parent, "toolbar|") {node->
                                 if(node.className == "android.widget.TextView" && !node.text.isNullOrEmpty()) {
@@ -27,7 +27,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                         } else false
                     }
                 else if (currentActivity.startsWith("cooperation.qzone."))
-                    enumNode(rootInActiveWindow, "root|"){node->
+                    enumNode(rootInActiveWindow?:return, "root|"){node->
                         if(node.contentDescription == "消息 标题") {
                             startService(Intent(this, NotificationMonitorService::class.java).putExtra("key", "${NotificationMonitorService.qzoneTag[tag]?:tag}_qzone"))
                             true
