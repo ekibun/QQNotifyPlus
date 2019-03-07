@@ -19,6 +19,7 @@
 - 通知使用权（required）
 - 无障碍(关闭则无法在QQ打开时清理通知）
 - 自启动（MIUI等）
+
 注，由于Android8使用通知渠道管理通知，app不提供设置界面，请通过设置调整通知样式 
 ## 感谢以下的开源项目及作者
 - [Android Open Source Project](http://source.android.com/)
