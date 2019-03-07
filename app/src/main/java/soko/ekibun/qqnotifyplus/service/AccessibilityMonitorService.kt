@@ -9,11 +9,11 @@ import android.view.accessibility.AccessibilityNodeInfo
 class AccessibilityMonitorService : AccessibilityService() {
 
     var currentActivity = ""
+    var currentPackage = ""
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
-        val tag = NotificationMonitorService.tags[ event.packageName.toString()]?:return
-
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED ->{
+                val tag = NotificationMonitorService.tags[currentPackage]?:return
                 if ("com.tencent.mobileqq.activity.SplashActivity" == currentActivity || "com.dataline.activities.LiteActivity" == currentActivity)
                     enumNode(rootInActiveWindow, "root|"){subNode->
                         if(subNode.contentDescription in listOf("群资料卡", "返回消息")) {
@@ -35,10 +35,10 @@ class AccessibilityMonitorService : AccessibilityService() {
                     }
             }
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED -> {
-                if (event.packageName == null || event.className == null)
-                    return
+                if (event.packageName == null || event.className == null) return
                 currentActivity = event.className.toString()
-                Log.v("activity", currentActivity)
+                currentPackage = event.packageName.toString()
+                Log.v("activity", "$currentPackage $currentActivity")
             }
         }
     }
