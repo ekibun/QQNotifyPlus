@@ -13,7 +13,10 @@ import soko.ekibun.qqnotifyplus.R
 import soko.ekibun.qqnotifyplus.util.FileUtils
 import soko.ekibun.qqnotifyplus.util.NotificationUtil
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.preference.PreferenceManager
 import android.support.v4.content.res.ResourcesCompat
 import eu.chainfire.librootjava.RootIPCReceiver
@@ -32,6 +35,7 @@ class NotificationMonitorService : NotificationListenerService() {
     }
     companion object {
         const val EXTRA_NOTIFICATION_MODIFIED = "QQNotificationModified"
+        const val ACTION_REMOVE_NOTIFICATION = "soko.ekibun.qqnotifyplus.removenotification"
 
         val tags = mapOf(
                 "com.tencent.mobileqq" to Tag.QQ,
@@ -46,13 +50,31 @@ class NotificationMonitorService : NotificationListenerService() {
         }
     }
 
+    private val receiver = object: BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent != null) {
+                val sbns = activeNotifications
+                if(intent.hasExtra("key")){
+                    val key = intent.getStringExtra("key")
+                    if (sbns != null && sbns.isNotEmpty()) {
+                        for (sbn in sbns) {
+                            if (sbn.tag == key) cancelNotification(sbn.key)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         ipcReceiver.setContext(this)
+        registerReceiver(receiver, IntentFilter(ACTION_REMOVE_NOTIFICATION))
     }
 
     override fun onDestroy() {
         ipcReceiver.release()
+        unregisterReceiver(receiver)
         super.onDestroy()
     }
 
@@ -75,9 +97,9 @@ class NotificationMonitorService : NotificationListenerService() {
     private val sp by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
 
     fun modifyNotification(sbn: StatusBarNotification, ipc: IIPC?){
-        var tag = NotificationMonitorService.tags[sbn.packageName]?:return
+        var tag = NotificationMonitorService.tags[sbn.packageName]?:throw Exception("not matched packageName")
 
-        val notification = sbn.notification?:return
+        val notification = sbn.notification?:throw Exception("no notification")
         val notifyTitle = notification.extras.getString(Notification.EXTRA_TITLE)?:""
         val notifyText = notification.extras.getString(Notification.EXTRA_TEXT)?.replace("\n", " ")?:""
         val notifyTicker = notification.tickerText?.toString()?.replace("\n", " ")?:""
@@ -87,7 +109,7 @@ class NotificationMonitorService : NotificationListenerService() {
 
         val mul = !notifyText.contains(":") && !notifyTicker.endsWith(notifyText)
         val title = if (mul) notifyText else notifyTitle
-        if(notifyTicker.isEmpty() || title == notifyTicker) return
+        if(notifyTicker.isEmpty() || title == notifyTicker) throw Exception("empty notifyTicker")
 
         //单独处理QQ空间
         val count = if (notifyTicker == notifyText) {
@@ -114,7 +136,7 @@ class NotificationMonitorService : NotificationListenerService() {
         }?:Regex("(${if(uinname.isNullOrEmpty()) "[^:]+" else uinname}): (.+)").find(notifyTicker)?.groupValues?.let{
             Notify(it.getOrNull(1)?:"",
                     it.getOrNull(2)?:"")
-        }?:return
+        }?: throw Exception("not matched Parser")
         val key = "${tag.name}_" + if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) notify.name else notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
@@ -187,12 +209,38 @@ class NotificationMonitorService : NotificationListenerService() {
             NotificationUtil.registerChannel(manager, channelId, channelName, channelGroupTag.name, channelGroupTag.name)
             manager.notify(key, tag.ordinal, newNotification)
         } else ipc.sendNotification(sbn.packageName, key, tag.ordinal, newNotification, channelId, channelName)
+    }
+
+    private fun canRemoveNotifiction(sbn: StatusBarNotification): Boolean{
+        var tag = NotificationMonitorService.tags[sbn.packageName]?:return false
+
+        val notification = sbn.notification?:return false
+        val notifyTitle = notification.extras.getString(Notification.EXTRA_TITLE)?:""
+        val notifyText = notification.extras.getString(Notification.EXTRA_TEXT)?.replace("\n", " ")?:""
+        val notifyTicker = notification.tickerText?.toString()?.replace("\n", " ")?:""
+        Log.v("title", notifyTitle)
+        Log.v("text", notifyText)
+        Log.v("ticker", notifyTicker)
+
+        val mul = !notifyText.contains(":") && !notifyTicker.endsWith(notifyText)
+        val title = if (mul) notifyText else notifyTitle
+        if(notifyTicker.isEmpty() || title == notifyTicker) return false
+
+        if (notifyTicker == notifyText) {
+            val count = Regex("QQ空间动态\\(共(\\d+)条未读\\)$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:0
+            if(count > 0 || "QQ空间动态" == title)
+                tag = qzoneTag[tag]?:tag
+        }
+
+        return isQzoneTag(tag) ||
+                Regex("(.*?)\\((.+?)\\):(.+)").matches(notifyTicker) ||
+                Regex("([^:]+): (.+)").matches(notifyTicker)
+    }
+
+    override fun onNotificationPosted(sbn: StatusBarNotification) {
+        if(sbn.notification.extras.containsKey(EXTRA_NOTIFICATION_MODIFIED) || !NotificationMonitorService.tags.containsKey(sbn.packageName) || !canRemoveNotifiction(sbn)) return
 
         cancelNotification(sbn.key)
-    }
-    override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if(sbn.notification.extras.containsKey(EXTRA_NOTIFICATION_MODIFIED) || !NotificationMonitorService.tags.containsKey(sbn.packageName)) return
-
         statusBarNotifications.add(sbn) //cache
 
         //Root
@@ -206,21 +254,6 @@ class NotificationMonitorService : NotificationListenerService() {
     private val shell= Shell.Builder().useSU().open { commandCode, exitCode, output ->
         root = exitCode == 0
         Log.v("su", "$commandCode, $exitCode, $output")
-    }
-
-    override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent != null) {
-            val sbns = activeNotifications
-            if(intent.hasExtra("key")){
-                val key = intent.getStringExtra("key")
-                if (sbns != null && sbns.isNotEmpty()) {
-                    for (sbn in sbns) {
-                        if (sbn.tag == key) cancelNotification(sbn.key)
-                    }
-                }
-            }
-        }
-        return super.onStartCommand(intent, flags, startId)
     }
 
     class Notifies: ArrayList<Message>(){

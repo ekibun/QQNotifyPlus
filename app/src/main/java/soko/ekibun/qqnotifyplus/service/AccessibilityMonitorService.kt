@@ -17,7 +17,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                 if (currentActivity.startsWith("cooperation.qzone."))
                     enumNode(rootInActiveWindow?:return, "root|"){node->
                         if(node.contentDescription == "消息 标题") {
-                            startService(Intent(this, NotificationMonitorService::class.java).putExtra("key", "${NotificationMonitorService.qzoneTag[tag]?:tag}_qzone"))
+                            sendBroadcast(Intent(NotificationMonitorService.ACTION_REMOVE_NOTIFICATION).putExtra("key", "${NotificationMonitorService.qzoneTag[tag]?:tag}_qzone"))
                             true
                         } else false
                     }
@@ -28,7 +28,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                                 if(subNode.contentDescription in listOf("群资料卡", "返回消息")) {
                                     enumNode(subNode.parent, "toolbar|") {node->
                                         if(node.className == "android.widget.TextView" && !node.text.isNullOrEmpty()) {
-                                            startService(Intent(this, NotificationMonitorService::class.java).putExtra("key", "${tag.name}_${node.text}"))
+                                            sendBroadcast(Intent(NotificationMonitorService.ACTION_REMOVE_NOTIFICATION).putExtra("key", "${tag.name}_${node.text}"))
                                             true
                                         } else false
                                     }
@@ -42,7 +42,7 @@ class AccessibilityMonitorService : AccessibilityService() {
                                 if(subNode.contentDescription in listOf("返回消息界面", "群资料卡")) {
                                     enumNode(subNode.parent.parent?:subNode.parent, "toolbar|") {node->
                                         if(node.className == "android.widget.TextView" && !node.text.isNullOrEmpty() && node.contentDescription == null) {
-                                            startService(Intent(this, NotificationMonitorService::class.java).putExtra("key", "${tag.name}_${node.text}"))
+                                            sendBroadcast(Intent(NotificationMonitorService.ACTION_REMOVE_NOTIFICATION).putExtra("key", "${tag.name}_${node.text}"))
                                             true
                                         } else false
                                     }

@@ -12,6 +12,8 @@ import soko.ekibun.qqnotifyplus.BuildConfig
 import soko.ekibun.qqnotifyplus.util.NotificationUtil
 import java.util.*
 import android.content.pm.ApplicationInfo
+import android.os.Bundle
+import android.os.IBinder
 import android.support.annotation.Keep
 import android.util.Log
 
@@ -28,9 +30,6 @@ object RootMain {
         RootJava.restoreOriginalLdLibraryPath()
         // implement interface
         val ipc = object : IIPC.Stub() {
-            override fun getPid(): Int {
-                return android.os.Process.myPid()
-            }
             override fun getIntent(pendingIntent: PendingIntent): Intent {
                 return getIntentFromPendingIntent(pendingIntent)
             }
