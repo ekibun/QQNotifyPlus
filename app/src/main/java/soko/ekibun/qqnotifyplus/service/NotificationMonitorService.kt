@@ -4,10 +4,6 @@ import android.app.Notification
 import android.graphics.Bitmap
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import android.support.v4.app.NotificationCompat
-import android.support.v4.app.NotificationCompat.MessagingStyle.Message
-import android.support.v4.app.Person
-import android.support.v4.graphics.drawable.IconCompat
 import android.util.Log
 import soko.ekibun.qqnotifyplus.R
 import soko.ekibun.qqnotifyplus.util.FileUtils
@@ -18,11 +14,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.preference.PreferenceManager
-import android.support.v4.content.res.ResourcesCompat
+import androidx.core.app.NotificationCompat
+import androidx.core.app.Person
+import androidx.core.content.res.ResourcesCompat
+import androidx.core.graphics.drawable.IconCompat
 import eu.chainfire.librootjava.RootIPCReceiver
 import soko.ekibun.qqnotifyplus.root.IIPC
 import eu.chainfire.libsuperuser.Shell
 import soko.ekibun.qqnotifyplus.root.RootMain
+import kotlin.math.max
 
 class NotificationMonitorService : NotificationListenerService() {
     enum class Tag{
@@ -97,7 +97,7 @@ class NotificationMonitorService : NotificationListenerService() {
     private val sp by lazy { PreferenceManager.getDefaultSharedPreferences(this) }
 
     fun modifyNotification(sbn: StatusBarNotification, ipc: IIPC?){
-        var tag = NotificationMonitorService.tags[sbn.packageName]?:throw Exception("not matched packageName")
+        var tag = tags[sbn.packageName]?:throw Exception("not matched packageName")
 
         val notification = sbn.notification?:throw Exception("no notification")
         val notifyTitle = notification.extras.getString(Notification.EXTRA_TITLE)?:""
@@ -116,7 +116,7 @@ class NotificationMonitorService : NotificationListenerService() {
             val count = Regex("QQ空间动态\\(共(\\d+)条未读\\)$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:0
             if(count > 0 || "QQ空间动态" == title)
                 tag = qzoneTag[tag]?:tag
-            Math.max(1, count)
+            max(1, count)
         }else
             Regex("(\\d+)\\S{1,3}新消息\\)?$").find(title)?.groupValues?.get(1)?.toIntOrNull()?:1
 
@@ -170,14 +170,17 @@ class NotificationMonitorService : NotificationListenerService() {
                 .setIcon(if(notify.group.isEmpty()) IconCompat.createWithBitmap(profile) else null).build()
 
         val time = System.currentTimeMillis()
-        notifies.add(Message(notify.content, time, person))
+        notifies.add(NotificationCompat.MessagingStyle.Message(notify.content, time, person))
 
         val style = NotificationCompat.MessagingStyle(person)
         style.conversationTitle = notify.group
-        style.isGroupConversation = !notify.group.isEmpty()
+        style.isGroupConversation = notify.group.isNotEmpty()
         notifies.forEach { style.addMessage(it) }
 
+        val uid = ipc?.getUid(sbn.packageName, notification)
+
         val pendingIntent = try{
+            if(!mul) throw Exception("not mul") // for MIUI float window
             val it = Intent.parseUri(sp.getString(key, "")?:"",0)
             val uin = it.extras?.getString("uin", "")?.toIntOrNull()?:throw Exception("no uin")
             PendingIntent.getActivity(this.applicationContext, uin, it, PendingIntent.FLAG_UPDATE_CURRENT)
@@ -186,7 +189,7 @@ class NotificationMonitorService : NotificationListenerService() {
 
         val channelId =  "${tag.name}+" + if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) "friend" else "group"
         val channelName = if(isQzoneTag(tag)) "QQ空间消息" else if(notify.group.isEmpty()) "私聊消息" else "群组消息"
-        val channelGroupTag = NotificationMonitorService.tags[sbn.packageName]?:tag
+        val channelGroupTag = tags[sbn.packageName]?:tag
 
         val builder = NotificationCompat.Builder(this, channelId)
                 .setLargeIcon(profile)
@@ -204,15 +207,15 @@ class NotificationMonitorService : NotificationListenerService() {
         newNotification.extras.putBoolean(EXTRA_NOTIFICATION_MODIFIED, true)
         newNotification.extras.putParcelable("android.appInfo", notification.extras.getParcelable("android.appInfo"))
         NotificationUtil.sendToXiaoMi(newNotification, notifies.size)
-        if(ipc == null){
+        if(ipc == null || uid == null){
             val manager = NotificationUtil.getNotificationManager(this)
             NotificationUtil.registerChannel(manager, channelId, channelName, channelGroupTag.name, channelGroupTag.name)
             manager.notify(key, tag.ordinal, newNotification)
-        } else ipc.sendNotification(sbn.packageName, key, tag.ordinal, newNotification, channelId, channelName)
+        } else ipc.sendNotification(sbn.packageName, key, tag.ordinal, newNotification, channelId, channelName, uid)
     }
 
-    private fun canRemoveNotifiction(sbn: StatusBarNotification): Boolean{
-        var tag = NotificationMonitorService.tags[sbn.packageName]?:return false
+    private fun canRemoveNotification(sbn: StatusBarNotification): Boolean{
+        var tag = tags[sbn.packageName]?:return false
 
         val notification = sbn.notification?:return false
         val notifyTitle = notification.extras.getString(Notification.EXTRA_TITLE)?:""
@@ -238,7 +241,7 @@ class NotificationMonitorService : NotificationListenerService() {
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
-        if(sbn.notification.extras.containsKey(EXTRA_NOTIFICATION_MODIFIED) || !NotificationMonitorService.tags.containsKey(sbn.packageName) || !canRemoveNotifiction(sbn)) return
+        if(sbn.notification.extras.containsKey(EXTRA_NOTIFICATION_MODIFIED) || !NotificationMonitorService.tags.containsKey(sbn.packageName) || !canRemoveNotification(sbn)) return
 
         cancelNotification(sbn.key)
         statusBarNotifications.add(sbn) //cache
@@ -256,7 +259,7 @@ class NotificationMonitorService : NotificationListenerService() {
         Log.v("su", "$commandCode, $exitCode, $output")
     }
 
-    class Notifies: ArrayList<Message>(){
+    class Notifies: ArrayList<NotificationCompat.MessagingStyle.Message>(){
         var profile: Bitmap? = null
     }
 

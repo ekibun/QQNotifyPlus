@@ -12,8 +12,8 @@ import soko.ekibun.qqnotifyplus.BuildConfig
 import soko.ekibun.qqnotifyplus.util.NotificationUtil
 import java.util.*
 import android.content.pm.ApplicationInfo
-import android.support.annotation.Keep
 import android.util.Log
+import androidx.annotation.Keep
 
 object RootMain {
 
@@ -28,24 +28,29 @@ object RootMain {
         RootJava.restoreOriginalLdLibraryPath()
         // implement interface
         val ipc = object : IIPC.Stub() {
+            @SuppressLint("WrongConstant")
+            override fun getUid(pkg: String, notification: Notification): Int {
+                val context = RootJava.getPackageContext(pkg)
+                val appInfo = (notification.extras.getParcelable("android.appInfo") as? ApplicationInfo)?: context.packageManager.getApplicationInfo(pkg, 8192)
+                return appInfo.uid
+            }
+
+            override fun getPendingIntent(intent: Intent, pkg: String, uid: Int, requestCode: Int, flag: Int): PendingIntent {
+                return PendingIntent.getActivity(RootJava.getSystemContext(), requestCode, intent, flag, null)
+            }
+
+            override fun sendNotification(pkg: String, tag: String, id: Int, notification: Notification, channelId: String, channelName: String, uid: Int) {
+                val context = RootJava.getPackageContext(pkg)
+                val manager = NotificationUtil.getNotificationManager(context)
+                val channel = if (Build.VERSION.SDK_INT >= 26)
+                    listOf(NotificationUtil.createChannel(channelId, "$channelName+", null)) else ArrayList()
+                createNotificationChannelsForPackage(manager, pkg, uid, channel)
+                injectNotificationManager(manager)
+                manager.notify(tag, id, notification)
+            }
+
             override fun getIntent(pendingIntent: PendingIntent): Intent {
                 return getIntentFromPendingIntent(pendingIntent)
-            }
-            @SuppressLint("WrongConstant")
-            override fun sendNotification(pkg: String, tag: String, id: Int, notification: Notification, channelId: String, channelName: String) {
-                try {
-                    val context = RootJava.getPackageContext(pkg)
-                    val appInfo = (notification.extras.getParcelable("android.appInfo") as? ApplicationInfo)?: context.packageManager.getApplicationInfo(pkg, 8192)
-                    val manager = NotificationUtil.getNotificationManager(context)
-                    val channel = if (Build.VERSION.SDK_INT >= 26)
-                        listOf(NotificationUtil.createChannel(channelId, "$channelName+", null)) else ArrayList()
-                    createNotificationChannelsForPackage(manager, pkg, appInfo.uid, channel)
-                    injectNotificationManager(manager)
-                    manager.notify(tag, id, notification)
-                } catch (e: Exception) {
-                    e.printStackTrace()
-                }
-
             }
         }
 
@@ -85,8 +90,23 @@ object RootMain {
         }
     }
 
+    class InjectableUidContext(base: Context, val uid: Int): ContextWrapper(base){
+        @Keep
+        fun getOpPackageName(): String{
+            Log.v("getOpPackageName", baseContext.packageName)
+            return baseContext.packageName
+        }
+
+        @Keep
+        fun getUserId(): Int{
+            Log.v("getUserId", uid.toString())
+            return uid
+        }
+    }
+
     class InjectableContext(base: Context): ContextWrapper(base){
-        @Keep fun getOpPackageName(): String{
+        @Keep
+        fun getOpPackageName(): String{
             Log.v("getOpPackageName", baseContext.packageName)
             return baseContext.packageName
         }

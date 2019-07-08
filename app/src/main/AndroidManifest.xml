@@ -30,14 +30,6 @@
                     android:name="android.accessibilityservice"
                     android:resource="@xml/accessibility"/>
         </service>
-
-        <activity android:name=".activity.MainActivity">
-            <intent-filter>
-                <action android:name="android.intent.action.MAIN"/>
-
-                <category android:name="android.intent.category.LAUNCHER"/>
-            </intent-filter>
-        </activity>
     </application>
 
 </manifest>
