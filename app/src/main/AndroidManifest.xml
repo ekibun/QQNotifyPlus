@@ -9,26 +9,17 @@
             android:icon="@mipmap/ic_launcher"
             android:label="@string/app_name"
             android:roundIcon="@mipmap/ic_launcher_round"
-            android:supportsRtl="true">
-        <service
-                android:name=".service.NotificationMonitorService"
-                android:label="@string/service_notify"
-                android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
-            <intent-filter>
-                <action android:name="android.service.notification.NotificationListenerService"/>
+            android:supportsRtl="true" tools:ignore="AllowBackup,GoogleAppIndexingWarning">
+        <service android:name=".service.NevoDecorator"
+                 android:directBootAware="true" tools:targetApi="N"
+                 android:permission="com.oasisfeng.nevo.permission.BIND_DECORATOR_SERVICE"
+                 android:process="com.oasisfeng.nevo.decorators"
+                 android:label="@string/app_name"
+                 android:description="@string/app_name">
+            <intent-filter android:priority="5">
+                <action android:name="com.oasisfeng.nevo.Decorator" />
             </intent-filter>
-        </service>
-        <service
-                android:name=".service.AccessibilityMonitorService"
-                android:label="@string/service_access"
-                android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService"/>
-            </intent-filter>
-
-            <meta-data
-                    android:name="android.accessibilityservice"
-                    android:resource="@xml/accessibility"/>
+            <meta-data android:name="packages" android:value="com.tencent.mobileqq|com.tencent.tim|com.tencent.qqlite" />
         </service>
     </application>
 

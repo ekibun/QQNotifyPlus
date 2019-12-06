@@ -17,28 +17,12 @@ import androidx.annotation.RequiresApi
 object NotificationUtil{
     
     @RequiresApi(Build.VERSION_CODES.O)
-    fun createChannel(channelId: String, title: String, groupId: String?): NotificationChannel{
+    fun createChannel(channelId: String, title: String): NotificationChannel{
         val channel = NotificationChannel(channelId, title, NotificationManager.IMPORTANCE_HIGH)
         channel.enableLights(true)
         channel.lightColor = Color.BLUE
         channel.enableVibration(true)
-        if(groupId != null) channel.group = groupId
         return channel
-    }
-
-    fun getNotificationManager(context: Context): NotificationManager{
-        return context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-    }
-
-    fun registerChannel(manager: NotificationManager, channelId: String, title: String, groupId: String, groupName: String){
-        if(Build.VERSION.SDK_INT >=26) {
-            manager.createNotificationChannelGroup(NotificationChannelGroup(groupId, groupName))
-            manager.createNotificationChannel(createChannel(channelId, title, groupId))
-        }
-    }
-
-    fun getLargeIcon(context: Context, notification: Notification): Bitmap?{
-        return (notification.getLargeIcon()?.loadDrawable(context) as? BitmapDrawable)?.bitmap
     }
 
     /**
