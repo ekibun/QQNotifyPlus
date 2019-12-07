@@ -119,6 +119,7 @@ class NevoDecorator : NevoDecoratorService() {
         MessagingBuilder.flatIntoExtras(style, notification.extras)
         notification.extras.putString(Notification.EXTRA_TEMPLATE, TEMPLATE_MESSAGING)
         notification.extras.putBoolean(Notification.EXTRA_SHOW_WHEN, true)
+        notification.extras.putString(Notification.EXTRA_SUB_TEXT, "${notifies.size}条${if(isQzoneTag(tag))"未读" else "新消息"}")
 
         notification.`when` = time
         notification.smallIcon = Icon.createWithResource(this, if(isQzoneTag(tag)) R.drawable.ic_qzone else if(tag == Tag.TIM) R.drawable.ic_tim else  R.drawable.ic_qq)

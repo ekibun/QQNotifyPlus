@@ -5,7 +5,7 @@ apply plugin: 'kotlin-android'
 apply plugin: 'kotlin-android-extensions'
 
 static def getAlphaVersionName() {
-    "alpha" + new Date().format("yyyyMMdd")
+    "nevo" + new Date().format("yyyyMMdd")
 }
 
 android {
