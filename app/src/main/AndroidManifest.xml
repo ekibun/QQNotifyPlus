@@ -19,7 +19,7 @@
             <intent-filter android:priority="5">
                 <action android:name="com.oasisfeng.nevo.Decorator" />
             </intent-filter>
-            <meta-data android:name="packages" android:value="com.tencent.mobileqq|com.tencent.tim|com.tencent.qqlite" />
+            <meta-data android:name="packages" android:value="com.tencent.mobileqq|com.tencent.tim|com.tencent.qqlite|com.tencent.minihd.qq" />
         </service>
     </application>
 

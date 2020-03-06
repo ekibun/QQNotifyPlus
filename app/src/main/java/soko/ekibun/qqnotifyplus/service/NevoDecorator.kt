@@ -22,9 +22,11 @@ class NevoDecorator : NevoDecoratorService() {
         QQ,
         TIM,
         QQ_LITE,
+        QQ_HD,
         QZONE_QQ,
         QZONE_TIM,
-        QZONE_LITE
+        QZONE_LITE,
+        QZONE_HD
     }
     class Notifies: ArrayList<NotificationCompat.MessagingStyle.Message>(){
         var profile: Icon? = null
@@ -40,11 +42,13 @@ class NevoDecorator : NevoDecoratorService() {
         val tags = mapOf(
                 "com.tencent.mobileqq" to Tag.QQ,
                 "com.tencent.tim" to Tag.TIM,
-                "com.tencent.qqlite" to Tag.QQ_LITE)
+                "com.tencent.qqlite" to Tag.QQ_LITE,
+                "com.tencent.minihd.qq" to Tag.QQ_HD)
         val qzoneTag = mapOf(
                 Tag.QQ to Tag.QZONE_QQ,
                 Tag.TIM to Tag.QZONE_TIM,
-                Tag.QQ_LITE to Tag.QZONE_LITE)
+                Tag.QQ_LITE to Tag.QZONE_LITE,
+                Tag.QQ_HD to Tag.QZONE_HD)
         fun isQzoneTag(tag: Tag): Boolean{
             return qzoneTag.containsValue(tag)
         }
@@ -83,7 +87,7 @@ class NevoDecorator : NevoDecoratorService() {
         }?:Regex("([^:]+): (.+)").find(notifyTicker)?.groupValues?.let{
             Notify(it.getOrNull(1)?:"",
                     it.getOrNull(2)?:"")
-        }?: throw Exception("not matched Parser")
+        }?: throw Exception("not matched Parser")  //不能自定义异常类吗
         val key = "${tag.name}_" + if(isQzoneTag(tag)) "qzone" else if(notify.group.isEmpty()) notify.name else notify.group
         val tagMsgList = msgList.getOrPut(tag) { HashMap()}
 
