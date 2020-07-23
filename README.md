@@ -1,5 +1,9 @@
 ![icon](./app/src/main/ic_launcher-web.png)
 # QQNotifyPlus
+本项目已停止维护，请转向
+
+https://github.com/liangchenhe55/QQ-Notify-Evolution
+
 [![GitHub release](	https://img.shields.io/github/release-pre/ekibun/QQNotifyPlus.svg)](https://github.com/ekibun/QQNotifyPlus/releases)
 [![GitHub license](	https://img.shields.io/github/license/ekibun/QQNotifyPlus.svg)](https://github.com/ekibun/QQNotifyPlus/LICENSE)
 ![](https://img.shields.io/github/downloads/ekibun/QQNotifyPlus/total.svg) 
@@ -8,8 +12,8 @@
 支持QQ正式版、轻聊版、TIM、QQ HD(QQ for Android Pad)
 - 使用SVG图标，可随导航栏变色
 - 使用Message Style显示每条消息的内容
-### neov模式
-自nevo20200202使用neov模式
+### nevo模式
+自nevo20200202使用nevo模式
 
 ## 开始使用
 - 下载[女娲石](https://play.google.com/store/apps/details?id=com.oasisfeng.nevo&referrer=utm_source%3Dgithub%26utm_medium%3Dreadme%26utm_content%3Dbadge)
